@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -18,11 +19,3 @@ export enum AppView {
   DASHBOARD = 'DASHBOARD',
   ADMIN = 'ADMIN',
 }
-
-export const MOCK_USERS: User[] = [
-  { id: '1', name: 'Alice', avatar: '🦊', color: 'bg-joy-orange' },
-  { id: '2', name: 'Bob', avatar: '🐼', color: 'bg-joy-blue' },
-  { id: '3', name: 'Charlie', avatar: '🦁', color: 'bg-joy-yellow' },
-  { id: '4', name: 'Diana', avatar: '🦄', color: 'bg-joy-purple' },
-  { id: '5', name: 'Eve', avatar: '🐸', color: 'bg-joy-green' },
-];

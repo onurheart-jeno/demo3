@@ -1,4 +1,5 @@
-import { ShiftLog, User, MOCK_USERS } from '../types';
+
+import { ShiftLog, User } from '../types';
 
 const LOGS_KEY = 'joyshift_logs_v1';
 const USERS_KEY = 'joyshift_users_v1';
@@ -65,9 +66,7 @@ export const getUsers = (): User[] => {
   if (stored) {
     return JSON.parse(stored);
   }
-  // Initialize with MOCK_USERS if empty
-  localStorage.setItem(USERS_KEY, JSON.stringify(MOCK_USERS));
-  return MOCK_USERS;
+  return [];
 };
 
 export const createUser = (name: string): User => {
@@ -87,4 +86,19 @@ export const createUser = (name: string): User => {
   users.push(newUser);
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
   return newUser;
+};
+
+export const updateUser = (updatedUser: User) => {
+  const users = getUsers();
+  const index = users.findIndex(u => u.id === updatedUser.id);
+  if (index !== -1) {
+    users[index] = updatedUser;
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  }
+};
+
+export const deleteUser = (userId: string) => {
+  let users = getUsers();
+  users = users.filter(u => u.id !== userId);
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
 };

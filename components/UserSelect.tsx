@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
-import { getUsers, createUser } from '../services/storageService';
+import { getUsers, createUser, updateUser, deleteUser } from '../services/storageService';
 
 interface UserSelectProps {
   onSelect: (user: User) => void;
@@ -13,20 +14,67 @@ const UserSelect: React.FC<UserSelectProps> = ({ onSelect, onAdminClick, isDarkM
   const [users, setUsers] = useState<User[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  
+  // Editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   useEffect(() => {
-    setUsers(getUsers());
+    const loadedUsers = getUsers();
+    setUsers(loadedUsers);
+    // If no users, automatically show create form
+    if (loadedUsers.length === 0) {
+      setIsCreating(true);
+    }
   }, []);
+
+  const refreshUsers = () => {
+    setUsers(getUsers());
+  };
 
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (newName.trim()) {
       const newUser = createUser(newName);
-      setUsers(getUsers()); // Refresh list
+      refreshUsers();
       setNewName('');
       setIsCreating(false);
       onSelect(newUser); // Auto select
     }
+  };
+
+  const startEditing = (e: React.MouseEvent, user: User) => {
+    e.stopPropagation();
+    setEditingId(user.id);
+    setEditName(user.name);
+  };
+
+  const saveEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (editName.trim() && editingId) {
+      const userToUpdate = users.find(u => u.id === editingId);
+      if (userToUpdate) {
+        updateUser({ ...userToUpdate, name: editName.trim() });
+        refreshUsers();
+        setEditingId(null);
+      }
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent, userId: string) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      deleteUser(userId);
+      const remaining = getUsers();
+      setUsers(remaining);
+      setEditingId(null);
+      if (remaining.length === 0) setIsCreating(true);
+    }
+  };
+
+  const cancelEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(null);
   };
 
   return (
@@ -35,7 +83,7 @@ const UserSelect: React.FC<UserSelectProps> = ({ onSelect, onAdminClick, isDarkM
       {/* Theme Toggle */}
       <button 
         onClick={toggleDarkMode}
-        className="absolute top-6 right-6 p-3 rounded-full bg-white dark:bg-joy-cardDark shadow-md hover:scale-110 transition-transform text-xl"
+        className="absolute top-6 right-6 p-3 rounded-full bg-white dark:bg-joy-cardDark shadow-md hover:scale-110 transition-transform text-xl z-20"
         aria-label="Toggle Dark Mode"
       >
         {isDarkMode ? '☀️' : '🌙'}
@@ -47,18 +95,51 @@ const UserSelect: React.FC<UserSelectProps> = ({ onSelect, onAdminClick, isDarkM
         
         {/* User Grid */}
         <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
-          {users.map((user) => (
-            <button
-              key={user.id}
-              onClick={() => onSelect(user)}
-              className={`${user.color} hover:brightness-110 active:scale-95 transition-all duration-200 p-6 rounded-3xl shadow-lg flex flex-col items-center justify-center aspect-square relative group`}
-            >
-              <span className="text-5xl mb-3 drop-shadow-sm transform group-hover:scale-110 transition-transform">{user.avatar}</span>
-              <span className="text-white font-bold text-xl tracking-wide shadow-black drop-shadow-md break-words w-full px-2 leading-tight">
-                {user.name}
-              </span>
-            </button>
-          ))}
+          {users.map((user) => {
+            const isEditing = editingId === user.id;
+
+            return (
+              <div
+                key={user.id}
+                onClick={() => !isEditing && onSelect(user)}
+                className={`${user.color} relative hover:brightness-110 transition-all duration-200 p-6 rounded-3xl shadow-lg flex flex-col items-center justify-center aspect-square group cursor-pointer ${isEditing ? 'brightness-105 ring-4 ring-white/50' : 'active:scale-95'}`}
+              >
+                {!isEditing && (
+                  <button 
+                    onClick={(e) => startEditing(e, user)}
+                    className="absolute top-2 right-2 p-2 bg-black/10 hover:bg-black/20 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Edit Name"
+                  >
+                    ✏️
+                  </button>
+                )}
+
+                {isEditing ? (
+                  <div className="w-full flex flex-col items-center gap-2" onClick={e => e.stopPropagation()}>
+                    <input 
+                      type="text" 
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full text-center bg-white/20 text-white placeholder-white/70 rounded-lg py-1 px-2 outline-none font-bold"
+                      autoFocus
+                    />
+                    <div className="flex gap-2 w-full mt-1">
+                      <button onClick={saveEdit} className="flex-1 bg-white/20 hover:bg-white/40 text-white rounded-lg py-1 text-xs font-bold">Save</button>
+                      <button onClick={(e) => handleDelete(e, user.id)} className="flex-1 bg-red-500/50 hover:bg-red-500/70 text-white rounded-lg py-1 text-xs font-bold">Del</button>
+                    </div>
+                    <button onClick={cancelEdit} className="text-xs text-white/70 hover:text-white mt-1 underline">Cancel</button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-5xl mb-3 drop-shadow-sm transform group-hover:scale-110 transition-transform">{user.avatar}</span>
+                    <span className="text-white font-bold text-xl tracking-wide shadow-black drop-shadow-md break-words w-full px-2 leading-tight">
+                      {user.name}
+                    </span>
+                  </>
+                )}
+              </div>
+            );
+          })}
 
           {/* Add New User Button / Form */}
           {isCreating ? (
@@ -76,10 +157,10 @@ const UserSelect: React.FC<UserSelectProps> = ({ onSelect, onAdminClick, isDarkM
                 <div className="flex gap-2 w-full">
                   <button 
                     type="button"
-                    onClick={() => setIsCreating(false)}
+                    onClick={() => users.length > 0 && setIsCreating(false)}
                     className="flex-1 py-2 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                   >
-                    Cancel
+                    {users.length > 0 ? 'Cancel' : 'Clear'}
                   </button>
                   <button 
                     type="submit"
